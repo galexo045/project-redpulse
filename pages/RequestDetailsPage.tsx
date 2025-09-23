@@ -47,8 +47,15 @@ const RequestDetailsPage: React.FC = () => {
     setNotification({ message: `A notification has been sent to ${volunteer.name}'s registered email.`, type: 'info' });
   };
   
-  const handleAcceptRequest = () => {
-      setNotification({ message: 'Thank you for your generosity! The requestor has been notified of your intent to donate.', type: 'success' });
+  const handleAcceptRequest = async () => {
+      if (!currentUser) return;
+      try {
+        await apiService.incrementDonationCount(currentUser.id);
+        setNotification({ message: 'Thank you! The requestor has been notified and your donation has been recorded.', type: 'success' });
+      } catch (error) {
+        console.error("Failed to accept request:", error);
+        setNotification({ message: 'There was an error recording your donation. Please try again.', type: 'error' });
+      }
   };
 
   if (loading) return <p className="text-center">Loading request details...</p>;
@@ -71,10 +78,17 @@ const RequestDetailsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-8 text-gray-700">
                 <p><strong>Blood Group Required:</strong> <span className="text-2xl font-bold text-brand-red">{request.bloodGroup}</span></p>
                 <p><strong>Units:</strong> <span className="font-bold">{request.units}</span></p>
-                <p><strong>Location:</strong> <span className="font-bold">{request.hospital}</span></p>
-                <p><strong>Locality:</strong> <span className="font-bold">{request.locality}</span></p>
-                <p><strong>Requestor:</strong> <span className="font-bold">{requestor.name}</span></p>
+                <p><strong>Location:</strong> <span className="font-bold">{request.hospital}, {request.locality}</span></p>
                 <p><strong>Posted:</strong> <span className="font-bold">{new Date(request.createdAt).toLocaleDateString()}</span></p>
+                <div>
+                    <p><strong>Requestor:</strong> <span className="font-bold">{requestor.name}</span></p>
+                    {isOwner && (
+                        <div className="mt-1 pl-4 text-sm text-gray-600 border-l-2 border-gray-200">
+                            <p><strong>Email:</strong> {requestor.email}</p>
+                            <p><strong>Phone:</strong> {requestor.phone}</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {isOwner && (

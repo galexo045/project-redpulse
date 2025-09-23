@@ -122,6 +122,14 @@ const getUserById = async (id: string): Promise<User | undefined> => {
   return handleResponse(response);
 };
 
+const incrementDonationCount = async (userId: string): Promise<User> => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/increment-donations/`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
 // =================================
 // MATCHING
 // =================================
@@ -143,5 +151,6 @@ export const apiService = {
   getRequestById,
   createRequest,
   getUserById,
+  incrementDonationCount,
   findMatches,
 };
