@@ -4,13 +4,25 @@ import { apiService } from '../services/apiService';
 import { BloodRequest, UserRole } from '../types';
 import RequestCard from '../components/RequestCard';
 import { Link } from 'react-router-dom';
+import DonationCooldownTimer from '../components/DonationCooldownTimer';
+import Notification from '../components/Notification';
 
 const DashboardPage: React.FC = () => {
   const { currentUser } = useAuth();
   const [requests, setRequests] = useState<BloodRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   useEffect(() => {
+    const requestCreated = sessionStorage.getItem('requestCreated');
+    if (requestCreated) {
+        setNotification({
+            message: 'Request submitted! Matching volunteers are being notified.',
+            type: 'success'
+        });
+        sessionStorage.removeItem('requestCreated');
+    }
+
     const fetchRequests = async () => {
       setLoading(true);
       const allRequests = await apiService.getRequests();
@@ -38,22 +50,26 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div>
+      {notification && <Notification message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
       <h1 className="text-3xl font-bold text-brand-dark mb-6">Welcome, {currentUser.name}!</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
             {isVolunteer && (
-                <div className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4 border-b-2 border-brand-red pb-2">Matching Requests for You</h2>
-                    {loading ? <p>Finding requests...</p> : (
-                        matchingRequests.length > 0 ? (
-                            <div className="space-y-4">
-                                {matchingRequests.map(req => <RequestCard key={req.id} request={req} />)}
-                            </div>
-                        ) : (
-                            <p className="text-gray-600 bg-white p-4 rounded-lg border">No open requests matching your blood group and locality right now. We'll notify you!</p>
-                        )
-                    )}
+                <div className="mb-8 space-y-8">
+                    <DonationCooldownTimer />
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-4 border-b-2 border-brand-red pb-2">Matching Requests for You</h2>
+                        {loading ? <p>Finding requests...</p> : (
+                            matchingRequests.length > 0 ? (
+                                <div className="space-y-4">
+                                    {matchingRequests.map(req => <RequestCard key={req.id} request={req} />)}
+                                </div>
+                            ) : (
+                                <p className="text-gray-600 bg-white p-4 rounded-lg border">No open requests matching your blood group and locality right now. We'll notify you!</p>
+                            )
+                        )}
+                    </div>
                 </div>
             )}
              {isRequestor && (

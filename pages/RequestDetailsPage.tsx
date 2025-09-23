@@ -5,6 +5,7 @@ import { BloodRequest, User, UserRole } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import VolunteerProfileCard from '../components/VolunteerProfileCard';
 import Notification from '../components/Notification';
+import DonationConfirmationModal from '../components/DonationConfirmationModal';
 
 const RequestDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ const RequestDetailsPage: React.FC = () => {
   const [matches, setMatches] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
   const fetchRequestDetails = useCallback(async () => {
     if (!id) return;
@@ -51,7 +53,8 @@ const RequestDetailsPage: React.FC = () => {
       if (!currentUser) return;
       try {
         await apiService.incrementDonationCount(currentUser.id);
-        setNotification({ message: 'Thank you! The requestor has been notified and your donation has been recorded.', type: 'success' });
+        localStorage.setItem('lastDonationDate', new Date().toISOString());
+        setShowConfirmationModal(true);
       } catch (error) {
         console.error("Failed to accept request:", error);
         setNotification({ message: 'There was an error recording your donation. Please try again.', type: 'error' });
@@ -67,6 +70,7 @@ const RequestDetailsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+        <DonationConfirmationModal isOpen={showConfirmationModal} onClose={() => setShowConfirmationModal(false)} />
         {notification && <Notification message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
 
         <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">

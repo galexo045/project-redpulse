@@ -1,144 +1,128 @@
-import { User, BloodRequest } from '../types';
+import { User, BloodRequest, BloodGroup, Sex, UserRole } from '../types';
 
-// This is the base URL for your future Django backend.
-const API_BASE_URL = '/api';
+// --- MOCK DATA & API LOGIC ---
+// To create a self-contained example, the mock API is now part of this service file.
 
-/**
- * Creates the authorization headers for authenticated requests.
- * It retrieves the auth token from localStorage.
- */
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken');
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    // Django REST Framework's JWT auth often uses 'Bearer'
-    headers['Authorization'] = `Bearer ${token}`;
+const users: User[] = [
+  { id: '1', name: 'John Doe', email: 'john@example.com', phone: '123-456-7890', bloodGroup: BloodGroup.APositive, sex: Sex.Male, locality: 'Downtown', role: UserRole.Volunteer, donations: 3 },
+  { id: '2', name: 'Jane Smith', email: 'jane@example.com', phone: '234-567-8901', bloodGroup: BloodGroup.ONegative, sex: Sex.Female, locality: 'Uptown', role: UserRole.Both, donations: 5 },
+  { id: '3', name: 'Peter Jones', email: 'peter@example.com', phone: '345-678-9012', bloodGroup: BloodGroup.BPositive, sex: Sex.Male, locality: 'Downtown', role: UserRole.Requestor, donations: 0 },
+  { id: '4', name: 'Mary Williams', email: 'mary@example.com', phone: '456-789-0123', bloodGroup: BloodGroup.APositive, sex: Sex.Female, locality: 'Downtown', role: UserRole.Volunteer, donations: 1 },
+];
+
+let requests: BloodRequest[] = [
+  { id: '101', requestorId: '3', patientName: 'David Jones', bloodGroup: BloodGroup.BPositive, units: 2, hospital: 'City General', locality: 'Downtown', urgency: 'High', status: 'Open', createdAt: new Date(Date.now() - 86400000) },
+  { id: '102', requestorId: '2', patientName: 'Anna Williams', bloodGroup: BloodGroup.ONegative, units: 1, hospital: 'Uptown Medical', locality: 'Uptown', urgency: 'Medium', status: 'Open', createdAt: new Date(Date.now() - 172800000) },
+];
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// --- Notification Logic ---
+const notifyMatches = (newRequest: BloodRequest) => {
+  console.log(`--- Initiating notification for new request: ${newRequest.patientName} ---`);
+  const matches = users.filter(user =>
+    (user.role === UserRole.Volunteer || user.role === UserRole.Both) &&
+    user.bloodGroup === newRequest.bloodGroup &&
+    user.locality.toLowerCase() === newRequest.locality.toLowerCase()
+  );
+
+  if (matches.length > 0) {
+    matches.forEach(match => {
+      // In a real app, this would trigger an email, SMS, or push notification service.
+      console.log(`[Notification] Simulating email to ${match.email} for new blood request for ${newRequest.bloodGroup} in ${newRequest.locality}.`);
+    });
+  } else {
+    console.log(`[Notification] No matching volunteers found for request for ${newRequest.patientName}.`);
   }
-  return headers;
 };
 
-// A helper to handle API responses and errors
-const handleResponse = async (response: Response) => {
-    if (response.ok) {
-        // Handle cases with no content
-        if (response.status === 204) {
-            return null;
-        }
-        return response.json();
-    }
-    
-    // Try to parse a JSON error response from the backend
-    try {
-        const errorData = await response.json();
-        const errorMessage = errorData.detail || errorData.message || 'An unknown API error occurred';
-        throw new Error(errorMessage);
-    } catch (e) {
-        // If parsing fails or it's not a JSON error, use the status text
-        throw new Error(response.statusText || 'An unknown network error occurred');
-    }
+
+// --- Service Functions ---
+
+const login = async (email: string): Promise<{ user: User }> => {
+  await delay(500);
+  const user = users.find(u => u.email === email);
+  if (user) {
+    localStorage.setItem('authToken', user.id);
+    return { user };
+  }
+  throw new Error("Invalid credentials. Hint: use an email from mock data, e.g., john@example.com");
 };
 
-// =================================
-// AUTHENTICATION
-// =================================
-
-const login = async (email: string): Promise<{ token: string; user: User }> => {
-  // NOTE: A real login would typically require a password.
-  // This is simplified to match the current UI.
-  const response = await fetch(`${API_BASE_URL}/auth/login/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }), // Adjust payload as needed for your backend
-  });
-  const data = await handleResponse(response);
-  if (data.token) {
-    localStorage.setItem('authToken', data.token);
-  }
-  return data;
-};
-
-const register = async (userData: Omit<User, 'id' | 'donations'>): Promise<{ token: string; user: User }> => {
-  const response = await fetch(`${API_BASE_URL}/auth/register/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(userData),
-  });
-  const data = await handleResponse(response);
-  if (data.token) {
-    localStorage.setItem('authToken', data.token);
-  }
-  return data;
+const register = async (userData: Omit<User, 'id' | 'donations'>): Promise<{ user: User }> => {
+    await delay(500);
+    const newUser: User = {
+      ...userData,
+      id: String(Date.now()), // More robust ID
+      donations: 0,
+    };
+    users.push(newUser);
+    localStorage.setItem('authToken', newUser.id);
+    return { user: newUser };
 };
 
 const logout = (): void => {
     localStorage.removeItem('authToken');
-    // Optional: Send a request to the backend to invalidate the token
-    // fetch(`${API_BASE_URL}/auth/logout/`, { method: 'POST', headers: getAuthHeaders() });
 };
 
-// =================================
-// CURRENT USER
-// =================================
-const getCurrentUser = async (): Promise<User> => {
-    const response = await fetch(`${API_BASE_URL}/users/me/`, {
-        headers: getAuthHeaders(),
-    });
-    return handleResponse(response);
-}
-
-// =================================
-// BLOOD REQUESTS
-// =================================
+const getCurrentUser = async (): Promise<User | null> => {
+    const userId = localStorage.getItem('authToken');
+    if (!userId) return null;
+    await delay(50);
+    const user = users.find(u => u.id === userId);
+    return user || null;
+};
 
 const getRequests = async (): Promise<BloodRequest[]> => {
-  const response = await fetch(`${API_BASE_URL}/requests/`);
-  return handleResponse(response);
+  await delay(500);
+  return [...requests].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 };
 
 const getRequestById = async (id: string): Promise<BloodRequest | undefined> => {
-  const response = await fetch(`${API_BASE_URL}/requests/${id}/`);
-  if (response.status === 404) return undefined;
-  return handleResponse(response);
+  await delay(200);
+  return requests.find(r => r.id === id);
 };
 
 const createRequest = async (requestData: Omit<BloodRequest, 'id' | 'createdAt' | 'status'>): Promise<BloodRequest> => {
-  const response = await fetch(`${API_BASE_URL}/requests/`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(requestData)
-  });
-  return handleResponse(response);
+  await delay(1000);
+  const newRequest: BloodRequest = {
+    ...requestData,
+    id: String(Date.now()),
+    createdAt: new Date(),
+    status: 'Open',
+  };
+  requests.push(newRequest);
+  
+  // Trigger notification logic
+  notifyMatches(newRequest);
+
+  return newRequest;
 };
 
-// =================================
-// USERS
-// =================================
-
-const getUserById = async (id: string): Promise<User | undefined> => {
-  const response = await fetch(`${API_BASE_URL}/users/${id}/`);
-  if (response.status === 404) return undefined;
-  return handleResponse(response);
+const getUserById = async (id:string): Promise<User | undefined> => {
+    await delay(200);
+    return users.find(u => u.id === id);
 };
 
 const incrementDonationCount = async (userId: string): Promise<User> => {
-  const response = await fetch(`${API_BASE_URL}/users/${userId}/increment-donations/`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-  });
-  return handleResponse(response);
+  await delay(300);
+  const user = users.find(u => u.id === userId);
+  if (user) {
+    user.donations += 1;
+    return { ...user };
+  }
+  throw new Error('User not found');
 };
 
-// =================================
-// MATCHING
-// =================================
-
 const findMatches = async (requestId: string): Promise<User[]> => {
-  const response = await fetch(`${API_BASE_URL}/requests/${requestId}/matches/`, {
-    headers: getAuthHeaders(),
-  });
-  return handleResponse(response);
+  const request = await getRequestById(requestId);
+  if(!request) return [];
+  await delay(700);
+  return users.filter(user =>
+      (user.role === UserRole.Volunteer || user.role === UserRole.Both) &&
+      user.bloodGroup === request.bloodGroup &&
+      user.locality.toLowerCase() === request.locality.toLowerCase()
+  );
 };
 
 

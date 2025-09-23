@@ -40,6 +40,7 @@ const NewRequestPage: React.FC = () => {
         urgency,
       };
       await apiService.createRequest(newRequestData);
+      sessionStorage.setItem('requestCreated', 'true');
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to create request. Please try again.');
