@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { api } from '../services/mockApi';
+import { apiService } from '../services/apiService';
 import { BloodGroup, BloodRequest } from '../types';
 import { BLOOD_GROUPS } from '../constants';
 // Note: In a real app, geminiService would be implemented. Here we mock it.
@@ -40,7 +39,7 @@ const NewRequestPage: React.FC = () => {
         locality,
         urgency,
       };
-      await api.createRequest(newRequestData);
+      await apiService.createRequest(newRequestData);
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to create request. Please try again.');

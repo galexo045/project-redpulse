@@ -1,7 +1,6 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import { User } from '../types';
-import { api } from '../services/mockApi';
+import { apiService } from '../services/apiService';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -23,7 +22,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     setError(null);
     try {
-      const user = await api.loginUser(email);
+      const user = await apiService.login(email);
       setCurrentUser(user);
       return user;
     } catch (e) {
@@ -42,7 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     setError(null);
     try {
-      const newUser = await api.registerUser(userData);
+      const newUser = await apiService.register(userData);
       setCurrentUser(newUser);
       return newUser;
     } catch (e) {

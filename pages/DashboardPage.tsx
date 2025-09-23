@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { api } from '../services/mockApi';
+import { apiService } from '../services/apiService';
 import { BloodRequest, UserRole } from '../types';
 import RequestCard from '../components/RequestCard';
 import { Link } from 'react-router-dom';
@@ -14,7 +13,7 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       setLoading(true);
-      const allRequests = await api.getRequests();
+      const allRequests = await apiService.getRequests();
       setRequests(allRequests);
       setLoading(false);
     };

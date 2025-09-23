@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { api } from '../services/mockApi';
+import { apiService } from '../services/apiService';
 import { User } from '../types';
 
 interface Message {
@@ -21,7 +20,7 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     const fetchRecipient = async () => {
       if (userId) {
-        const user = await api.getUserById(userId);
+        const user = await apiService.getUserById(userId);
         setRecipient(user || null);
         // Simulate loading initial messages
         setMessages([
