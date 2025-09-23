@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { User } from '../types';
 import { apiService } from '../services/apiService';
 
@@ -9,20 +9,38 @@ interface AuthContextType {
   register: (userData: Omit<User, 'id' | 'donations'>) => Promise<User>;
   loading: boolean;
   error: string | null;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true); // Start loading to check for existing session
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkUserSession = async () => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          const user = await apiService.getCurrentUser();
+          setCurrentUser(user);
+        } catch (e) {
+          // Token is invalid or expired
+          apiService.logout();
+        }
+      }
+      setLoading(false);
+    };
+    checkUserSession();
+  }, []);
 
   const login = useCallback(async (email: string) => {
     setLoading(true);
     setError(null);
     try {
-      const user = await apiService.login(email);
+      const { user } = await apiService.login(email);
       setCurrentUser(user);
       return user;
     } catch (e) {
@@ -34,6 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const logout = useCallback(() => {
+    apiService.logout();
     setCurrentUser(null);
   }, []);
 
@@ -41,9 +60,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     setError(null);
     try {
-      const newUser = await apiService.register(userData);
-      setCurrentUser(newUser);
-      return newUser;
+      const { user } = await apiService.register(userData);
+      setCurrentUser(user);
+      return user;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'An unknown error occurred.');
       throw e;
@@ -52,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const value = { currentUser, login, logout, register, loading, error };
+  const value = { currentUser, login, logout, register, loading, error, isAuthenticated: !!currentUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

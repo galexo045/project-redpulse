@@ -1,80 +1,115 @@
 import { User, BloodRequest } from '../types';
-import { api as mockApi } from './mockApi';
 
 // This is the base URL for your future Django backend.
-// It can be replaced with an environment variable.
 const API_BASE_URL = '/api';
 
 /**
- * In a real application, you would replace the calls to `mockApi`
- * with `fetch` calls to your backend endpoints.
- * Example headers for authenticated requests:
- * const getAuthHeaders = () => ({
- *   'Content-Type': 'application/json',
- *   'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
- * });
+ * Creates the authorization headers for authenticated requests.
+ * It retrieves the auth token from localStorage.
  */
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('authToken');
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    // Django REST Framework's JWT auth often uses 'Bearer'
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+// A helper to handle API responses and errors
+const handleResponse = async (response: Response) => {
+    if (response.ok) {
+        // Handle cases with no content
+        if (response.status === 204) {
+            return null;
+        }
+        return response.json();
+    }
+    
+    // Try to parse a JSON error response from the backend
+    try {
+        const errorData = await response.json();
+        const errorMessage = errorData.detail || errorData.message || 'An unknown API error occurred';
+        throw new Error(errorMessage);
+    } catch (e) {
+        // If parsing fails or it's not a JSON error, use the status text
+        throw new Error(response.statusText || 'An unknown network error occurred');
+    }
+};
 
 // =================================
 // AUTHENTICATION
 // =================================
 
-const login = async (email: string): Promise<User | null> => {
-  // REAL IMPLEMENTATION EXAMPLE:
-  // const response = await fetch(`${API_BASE_URL}/auth/login/`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email, password }), // Django might need email/password
-  // });
-  // if (!response.ok) throw new Error('Login failed');
-  // const { token, user } = await response.json();
-  // localStorage.setItem('authToken', token);
-  // return user;
-
-  // For now, we use the mock API
-  return mockApi.loginUser(email);
+const login = async (email: string): Promise<{ token: string; user: User }> => {
+  // NOTE: A real login would typically require a password.
+  // This is simplified to match the current UI.
+  const response = await fetch(`${API_BASE_URL}/auth/login/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }), // Adjust payload as needed for your backend
+  });
+  const data = await handleResponse(response);
+  if (data.token) {
+    localStorage.setItem('authToken', data.token);
+  }
+  return data;
 };
 
-const register = async (userData: Omit<User, 'id' | 'donations'>): Promise<User> => {
-  // REAL IMPLEMENTATION EXAMPLE:
-  // const response = await fetch(`${API_BASE_URL}/auth/register/`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify(userData),
-  // });
-  // if (!response.ok) {
-  //   const errorData = await response.json();
-  //   throw new Error(errorData.message || 'Registration failed');
-  // }
-  // return response.json();
-  
-  return mockApi.registerUser(userData);
+const register = async (userData: Omit<User, 'id' | 'donations'>): Promise<{ token: string; user: User }> => {
+  const response = await fetch(`${API_BASE_URL}/auth/register/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+  const data = await handleResponse(response);
+  if (data.token) {
+    localStorage.setItem('authToken', data.token);
+  }
+  return data;
 };
+
+const logout = (): void => {
+    localStorage.removeItem('authToken');
+    // Optional: Send a request to the backend to invalidate the token
+    // fetch(`${API_BASE_URL}/auth/logout/`, { method: 'POST', headers: getAuthHeaders() });
+};
+
+// =================================
+// CURRENT USER
+// =================================
+const getCurrentUser = async (): Promise<User> => {
+    const response = await fetch(`${API_BASE_URL}/users/me/`, {
+        headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+}
 
 // =================================
 // BLOOD REQUESTS
 // =================================
 
 const getRequests = async (): Promise<BloodRequest[]> => {
-  // REAL: return fetch(`${API_BASE_URL}/requests/`).then(res => res.json());
-  return mockApi.getRequests();
+  const response = await fetch(`${API_BASE_URL}/requests/`);
+  return handleResponse(response);
 };
 
 const getRequestById = async (id: string): Promise<BloodRequest | undefined> => {
-  // REAL: return fetch(`${API_BASE_URL}/requests/${id}/`).then(res => res.json());
-  return mockApi.getRequestById(id);
+  const response = await fetch(`${API_BASE_URL}/requests/${id}/`);
+  if (response.status === 404) return undefined;
+  return handleResponse(response);
 };
 
 const createRequest = async (requestData: Omit<BloodRequest, 'id' | 'createdAt' | 'status'>): Promise<BloodRequest> => {
-  // REAL:
-  // const response = await fetch(`${API_BASE_URL}/requests/`, {
-  //   method: 'POST',
-  //   headers: getAuthHeaders(),
-  //   body: JSON.stringify(requestData)
-  // });
-  // if (!response.ok) throw new Error('Failed to create request');
-  // return response.json();
-  return mockApi.createRequest(requestData);
+  const response = await fetch(`${API_BASE_URL}/requests/`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(requestData)
+  });
+  return handleResponse(response);
 };
 
 // =================================
@@ -82,8 +117,9 @@ const createRequest = async (requestData: Omit<BloodRequest, 'id' | 'createdAt' 
 // =================================
 
 const getUserById = async (id: string): Promise<User | undefined> => {
-  // REAL: return fetch(`${API_BASE_URL}/users/${id}/`).then(res => res.json());
-  return mockApi.getUserById(id);
+  const response = await fetch(`${API_BASE_URL}/users/${id}/`);
+  if (response.status === 404) return undefined;
+  return handleResponse(response);
 };
 
 // =================================
@@ -91,19 +127,18 @@ const getUserById = async (id: string): Promise<User | undefined> => {
 // =================================
 
 const findMatches = async (requestId: string): Promise<User[]> => {
-  // In a real backend, this logic would be handled by the server.
-  // REAL: return fetch(`${API_BASE_URL}/requests/${requestId}/matches/`).then(res => res.json());
-
-  // For now, we simulate this by fetching the request and then finding matches.
-  const request = await mockApi.getRequestById(requestId);
-  if (!request) return [];
-  return mockApi.findMatches(request);
+  const response = await fetch(`${API_BASE_URL}/requests/${requestId}/matches/`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
 };
 
 
 export const apiService = {
   login,
   register,
+  logout,
+  getCurrentUser,
   getRequests,
   getRequestById,
   createRequest,
