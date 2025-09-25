@@ -50,11 +50,12 @@ const RequestDetailsPage: React.FC = () => {
   };
   
   const handleAcceptRequest = async () => {
-      if (!currentUser) return;
+      if (!currentUser || !request) return;
       try {
-        await apiService.incrementDonationCount(currentUser.id);
+        await apiService.recordDonation(currentUser.id, request.id);
         localStorage.setItem('lastDonationDate', new Date().toISOString());
         setShowConfirmationModal(true);
+        fetchRequestDetails(); // Re-fetch to update status on page
       } catch (error) {
         console.error("Failed to accept request:", error);
         setNotification({ message: 'There was an error recording your donation. Please try again.', type: 'error' });

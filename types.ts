@@ -34,6 +34,14 @@ export interface User {
   donations: number;
 }
 
+export interface Donation {
+  id: string;
+  donorId: string;
+  requestId: string;
+  donationDate: Date;
+  patientName: string;
+}
+
 export interface BloodRequest {
   id: string;
   requestorId: string;

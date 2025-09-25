@@ -1,18 +1,29 @@
-import { User, BloodRequest, BloodGroup, Sex, UserRole } from '../types';
+import { User, BloodRequest, BloodGroup, Sex, UserRole, Donation } from '../types';
 
 // --- MOCK DATA & API LOGIC ---
 // To create a self-contained example, the mock API is now part of this service file.
 
 const users: User[] = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', phone: '123-456-7890', bloodGroup: BloodGroup.APositive, sex: Sex.Male, locality: 'Downtown', role: UserRole.Volunteer, donations: 3 },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', phone: '234-567-8901', bloodGroup: BloodGroup.ONegative, sex: Sex.Female, locality: 'Uptown', role: UserRole.Both, donations: 5 },
-  { id: '3', name: 'Peter Jones', email: 'peter@example.com', phone: '345-678-9012', bloodGroup: BloodGroup.BPositive, sex: Sex.Male, locality: 'Downtown', role: UserRole.Requestor, donations: 0 },
-  { id: '4', name: 'Mary Williams', email: 'mary@example.com', phone: '456-789-0123', bloodGroup: BloodGroup.APositive, sex: Sex.Female, locality: 'Downtown', role: UserRole.Volunteer, donations: 1 },
+  { id: '1', name: 'Arun S.', email: 'john@example.com', phone: '123-456-7890', bloodGroup: BloodGroup.APositive, sex: Sex.Male, locality: 'Kollam Town', role: UserRole.Volunteer, donations: 3 },
+  { id: '2', name: 'Priya Nair', email: 'jane@example.com', phone: '234-567-8901', bloodGroup: BloodGroup.ONegative, sex: Sex.Female, locality: 'Umayanalloor', role: UserRole.Both, donations: 5 },
+  { id: '3', name: 'Mohammed Ali', email: 'peter@example.com', phone: '345-678-9012', bloodGroup: BloodGroup.BPositive, sex: Sex.Male, locality: 'Palathara', role: UserRole.Requestor, donations: 0 },
+  { id: '4', name: 'Lakshmi Menon', email: 'mary@example.com', phone: '456-789-0123', bloodGroup: BloodGroup.APositive, sex: Sex.Female, locality: 'Kollam Town', role: UserRole.Volunteer, donations: 1 },
 ];
 
 let requests: BloodRequest[] = [
-  { id: '101', requestorId: '3', patientName: 'David Jones', bloodGroup: BloodGroup.BPositive, units: 2, hospital: 'City General', locality: 'Downtown', urgency: 'High', status: 'Open', createdAt: new Date(Date.now() - 86400000) },
-  { id: '102', requestorId: '2', patientName: 'Anna Williams', bloodGroup: BloodGroup.ONegative, units: 1, hospital: 'Uptown Medical', locality: 'Uptown', urgency: 'Medium', status: 'Open', createdAt: new Date(Date.now() - 172800000) },
+  { id: '101', requestorId: '3', patientName: 'Anil Kumar', bloodGroup: BloodGroup.BPositive, units: 2, hospital: 'N.S. Memorial Hospital', locality: 'Palathara', urgency: 'High', status: 'Open', createdAt: new Date(Date.now() - 86400000) },
+  { id: '102', requestorId: '2', patientName: 'Sunitha George', bloodGroup: BloodGroup.ONegative, units: 1, hospital: 'Travancore Medicity', locality: 'Umayanalloor', urgency: 'Medium', status: 'Open', createdAt: new Date(Date.now() - 172800000) },
+  { id: '103', requestorId: '3', patientName: 'Ramesh Pillai', bloodGroup: BloodGroup.APositive, units: 3, hospital: 'Bishop Benziger Hospital', locality: 'Kollam Town', urgency: 'High', status: 'Open', createdAt: new Date(Date.now() - 259200000)},
+  { id: '104', requestorId: '2', patientName: 'Fathima Beevi', bloodGroup: BloodGroup.ABPositive, units: 1, hospital: 'Azeezia Medical College', locality: 'Meeyannoor', urgency: 'Low', status: 'Open', createdAt: new Date(Date.now() - 345600000)},
+  { id: '105', requestorId: '3', patientName: 'Varghese Mathew', bloodGroup: BloodGroup.OPositive, units: 4, hospital: 'Holy Cross Hospital', locality: 'Kottiyam', urgency: 'High', status: 'Matched', createdAt: new Date(Date.now() - 86400000)},
+];
+
+let donations: Donation[] = [
+  { id: 'd1', donorId: '1', requestId: '103', donationDate: new Date('2024-06-15T10:00:00Z'), patientName: 'Ramesh Pillai' },
+  { id: 'd2', donorId: '1', requestId: 'past_req_1', donationDate: new Date('2024-04-01T14:30:00Z'), patientName: 'Past Patient A' },
+  { id: 'd3', donorId: '1', requestId: 'past_req_2', donationDate: new Date('2024-01-20T09:00:00Z'), patientName: 'Past Patient B' },
+  { id: 'd4', donorId: '2', requestId: '101', donationDate: new Date('2024-05-30T11:00:00Z'), patientName: 'Anil Kumar' },
+  { id: 'd5', donorId: '2', requestId: 'past_req_3', donationDate: new Date('2024-03-10T18:00:00Z'), patientName: 'Past Patient C' },
 ];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -104,14 +115,32 @@ const getUserById = async (id:string): Promise<User | undefined> => {
     return users.find(u => u.id === id);
 };
 
-const incrementDonationCount = async (userId: string): Promise<User> => {
+const recordDonation = async (donorId: string, requestId: string): Promise<Donation> => {
   await delay(300);
-  const user = users.find(u => u.id === userId);
-  if (user) {
-    user.donations += 1;
-    return { ...user };
+  const user = users.find(u => u.id === donorId);
+  const request = requests.find(r => r.id === requestId);
+
+  if (!user || !request) {
+    throw new Error('User or Request not found');
   }
-  throw new Error('User not found');
+
+  user.donations += 1;
+  request.status = 'Matched';
+
+  const newDonation: Donation = {
+    id: `d${Date.now()}`,
+    donorId,
+    requestId,
+    donationDate: new Date(),
+    patientName: request.patientName,
+  };
+  donations.push(newDonation);
+  return newDonation;
+};
+
+const getDonationsByUserId = async (userId: string): Promise<Donation[]> => {
+    await delay(400);
+    return donations.filter(d => d.donorId === userId).sort((a, b) => b.donationDate.getTime() - a.donationDate.getTime());
 };
 
 const findMatches = async (requestId: string): Promise<User[]> => {
@@ -135,6 +164,7 @@ export const apiService = {
   getRequestById,
   createRequest,
   getUserById,
-  incrementDonationCount,
+  recordDonation,
+  getDonationsByUserId,
   findMatches,
 };
