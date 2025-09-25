@@ -3,11 +3,14 @@ import { User, BloodRequest, BloodGroup, Sex, UserRole, Donation } from '../type
 // --- MOCK DATA & API LOGIC ---
 // To create a self-contained example, the mock API is now part of this service file.
 
-const users: User[] = [
-  { id: '1', name: 'Arun S.', email: 'john@example.com', phone: '123-456-7890', bloodGroup: BloodGroup.APositive, sex: Sex.Male, locality: 'Kollam Town', role: UserRole.Volunteer, donations: 3 },
-  { id: '2', name: 'Priya Nair', email: 'jane@example.com', phone: '234-567-8901', bloodGroup: BloodGroup.ONegative, sex: Sex.Female, locality: 'Umayanalloor', role: UserRole.Both, donations: 5 },
-  { id: '3', name: 'Mohammed Ali', email: 'peter@example.com', phone: '345-678-9012', bloodGroup: BloodGroup.BPositive, sex: Sex.Male, locality: 'Palathara', role: UserRole.Requestor, donations: 0 },
-  { id: '4', name: 'Lakshmi Menon', email: 'mary@example.com', phone: '456-789-0123', bloodGroup: BloodGroup.APositive, sex: Sex.Female, locality: 'Kollam Town', role: UserRole.Volunteer, donations: 1 },
+// Internal type for mock data that includes a password
+type MockUser = User & { password?: string };
+
+const users: MockUser[] = [
+  { id: '1', name: 'S.gopikrishna', email: 'sgopikrishna0045@gmail.com', password: 'sgopikrishna123', phone: '123-456-7890', bloodGroup: BloodGroup.APositive, sex: Sex.Male, locality: 'Kollam Town', role: UserRole.Volunteer, donations: 3 },
+  { id: '2', name: 'akshay sunil', email: 'akshaypadmagiri@gmail.com', password: 'akshaysunil123', phone: '234-567-8901', bloodGroup: BloodGroup.ONegative, sex: Sex.Female, locality: 'Umayanalloor', role: UserRole.Both, donations: 5 },
+  { id: '3', name: 'ransom tasya', email: 'ransomtasya2006@gmail.com', password: 'tasya123', phone: '345-678-9012', bloodGroup: BloodGroup.BPositive, sex: Sex.Male, locality: 'Palathara', role: UserRole.Requestor, donations: 0 },
+  { id: '4', name: 'adithyan p', email: 'adithyanpmanikuttan@gmail.com', password: 'adithyan123', phone: '456-789-0123', bloodGroup: BloodGroup.APositive, sex: Sex.Female, locality: 'Kollam Town', role: UserRole.Volunteer, donations: 1 },
 ];
 
 let requests: BloodRequest[] = [
@@ -50,26 +53,33 @@ const notifyMatches = (newRequest: BloodRequest) => {
 
 // --- Service Functions ---
 
-const login = async (email: string): Promise<{ user: User }> => {
+const login = async (email: string, password: string): Promise<{ user: User }> => {
   await delay(500);
-  const user = users.find(u => u.email === email);
+  const user = users.find(u => u.email === email && u.password === password);
   if (user) {
     localStorage.setItem('authToken', user.id);
-    return { user };
+    const { password, ...userWithoutPassword } = user; // Don't send password to frontend state
+    return { user: userWithoutPassword };
   }
-  throw new Error("Invalid credentials. Hint: use an email from mock data, e.g., john@example.com");
+  throw new Error("Invalid credentials. Hint: use an email from mock data and password 'password123'");
 };
 
-const register = async (userData: Omit<User, 'id' | 'donations'>): Promise<{ user: User }> => {
+const register = async (userData: Omit<User, 'id' | 'donations'> & { password: string }): Promise<{ user: User }> => {
     await delay(500);
-    const newUser: User = {
+    if (users.some(u => u.email === userData.email)) {
+        throw new Error("An account with this email already exists.");
+    }
+
+    const newUser: MockUser = {
       ...userData,
       id: String(Date.now()), // More robust ID
       donations: 0,
     };
     users.push(newUser);
     localStorage.setItem('authToken', newUser.id);
-    return { user: newUser };
+    
+    const { password, ...userWithoutPassword } = newUser;
+    return { user: userWithoutPassword };
 };
 
 const logout = (): void => {
@@ -81,7 +91,10 @@ const getCurrentUser = async (): Promise<User | null> => {
     if (!userId) return null;
     await delay(50);
     const user = users.find(u => u.id === userId);
-    return user || null;
+    if (!user) return null;
+    
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
 };
 
 const getRequests = async (): Promise<BloodRequest[]> => {
@@ -112,7 +125,11 @@ const createRequest = async (requestData: Omit<BloodRequest, 'id' | 'createdAt' 
 
 const getUserById = async (id:string): Promise<User | undefined> => {
     await delay(200);
-    return users.find(u => u.id === id);
+    const user = users.find(u => u.id === id);
+    if (!user) return undefined;
+    
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
 };
 
 const recordDonation = async (donorId: string, requestId: string): Promise<Donation> => {
@@ -147,11 +164,13 @@ const findMatches = async (requestId: string): Promise<User[]> => {
   const request = await getRequestById(requestId);
   if(!request) return [];
   await delay(700);
-  return users.filter(user =>
+  const matchingUsers = users.filter(user =>
       (user.role === UserRole.Volunteer || user.role === UserRole.Both) &&
       user.bloodGroup === request.bloodGroup &&
       user.locality.toLowerCase() === request.locality.toLowerCase()
   );
+  // Remove password from returned users
+  return matchingUsers.map(({password, ...user}) => user);
 };
 
 

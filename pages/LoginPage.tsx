@@ -10,20 +10,29 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>(BloodGroup.APositive);
   const [sex, setSex] = useState<Sex>(Sex.Male);
   const [locality, setLocality] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.Volunteer);
+  const [passwordError, setPasswordError] = useState('');
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordError('');
+    if (!isLogin && password !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
     try {
       if (isLogin) {
-        await login(email);
+        await login(email, password);
       } else {
-        await register({ name, email, phone, bloodGroup, sex, locality, role });
+        await register({ name, email, phone, bloodGroup, sex, locality, role, password });
       }
       navigate('/dashboard');
     } catch (err) {
@@ -64,8 +73,16 @@ const LoginPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700">Email Address</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-red focus:border-brand-red" />
           </div>
+           <div>
+            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-red focus:border-brand-red" />
+          </div>
           {!isLogin && (
             <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-red focus:border-brand-red" />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Phone Number</label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-red focus:border-brand-red" />
@@ -97,6 +114,7 @@ const LoginPage: React.FC = () => {
             </>
           )}
 
+          {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <div>

@@ -4,9 +4,9 @@ import { apiService } from '../services/apiService';
 
 interface AuthContextType {
   currentUser: User | null;
-  login: (email: string) => Promise<User | null>;
+  login: (email: string, password: string) => Promise<User | null>;
   logout: () => void;
-  register: (userData: Omit<User, 'id' | 'donations'>) => Promise<User>;
+  register: (userData: Omit<User, 'id' | 'donations'> & { password: string }) => Promise<User>;
   loading: boolean;
   error: string | null;
   isAuthenticated: boolean;
@@ -36,11 +36,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkUserSession();
   }, []);
 
-  const login = useCallback(async (email: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
-      const { user } = await apiService.login(email);
+      const { user } = await apiService.login(email, password);
       setCurrentUser(user);
       return user;
     } catch (e) {
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCurrentUser(null);
   }, []);
 
-  const register = useCallback(async (userData: Omit<User, 'id' | 'donations'>) => {
+  const register = useCallback(async (userData: Omit<User, 'id' | 'donations'> & { password: string }) => {
     setLoading(true);
     setError(null);
     try {
